@@ -1,8 +1,19 @@
+# Trello link
+https://trello.com/b/kyi6vb5V/learn-kubernetes
+
 # Kubernetes Components
 Clusters:
 Control Planes:
     - manage the cluster and the nodes that are used to host the running applications
     - schedules application instances from Deployments
+    -contains
+        * kube-scheduler
+        * controller-manager
+            - node-controller
+            - replication-controller
+        * etcd cluster
+            - who did what when and why
+        kube-apiserver
 Pod:
     - kubernetes abstraction that represents a group of one or more application containers
     - also represents shared resources
@@ -13,14 +24,20 @@ Pod:
     - random ip from Node internal range
 Node:
     - a VM or a physical computer that serves as a worker machine
-    - each Node has a Kubelet and a container runtime
+    - each Node has a Kubelet and a container runtime (docker, containerd, rkt)
     - can have multiple Pods
-Kubernetes API:
+    - each worker Node has a kube-proxy
+Kubernetes API (kube-apiserver):
     - Nodes communicate with the Control Plane using this
     - End users can also use this to interact with the cluster
+    - this is what kubectl interacts with
 Kubelet:
+    - listens for instructions from kube-apiserver
+    - also reports the node status back to kube-apiserver
     - makes sure containers are running in a Pod for a Node.
     - manages the Node and communicates with the Control Plane
+kube-proxy
+    - allows worker nodes to communicate with each other across the cluster
 Service: 
     - how to abstract away apps using multiple Pods.
     - defines a logical set of pods and a policy by which to access them
@@ -65,6 +82,21 @@ StatefulSet:
 Namespace
 ReplicaSet:
     - drives cluster to desired state through creation of Pods
+ETCD:
+    - distributed key-value store
+    - listens on 2379 by default
+    - etcdctl client is the command line tool for etcd
+    - stores info about the cluster
+        * Nodes
+        * PODs
+        * Configs
+        * Secrets
+        * Accounts
+        * Roles
+        * Bindings 
+        * Others
+    - etcd.service configuration must be set for High Availability clustes where there will be more than one
+
 
 # neato notes
 you can use the '-l' flag to kubectl get by label
