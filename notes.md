@@ -77,7 +77,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - PersistentVolumeClaim
 - PersistentVolume
 - StatefulSet: 
-    - pods get serial names (ex: \<app\>-0, \<app\>-1)
+    - pods get serial names (ex: <app>-0, <app>-1)
     - pods get (individual dns name) endpoints
 - Namespace
 - ReplicaSet:
@@ -103,6 +103,9 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - ex: `$kubectl get services -l app=my-app`
 
 # Common Commands (C'mon) from the Kubernetes Tuts
+- make one node with an image
+    - `$kubectl run <podname> --image=nginx`
+        - consider using something like `--dry-run=client -o yaml` on the end to get an example yaml file if you ever need one.
 - put podname in a variable:
     - `$export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')`
 - API of the pod (assumes $POD_NAME variable is set):
