@@ -80,8 +80,6 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - pods get serial names (ex: <app>-0, <app>-1)
     - pods get (individual dns name) endpoints
 - Namespace
-- ReplicaSet:
-    - drives cluster to desired state through creation of Pods
 - ETCD:
     - distributed key-value store
     - listens on 2379 by default
@@ -96,14 +94,30 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
         * Bindings 
         * Others
     - etcd.service configuration must be set for High Availability clustes where there will be more than one
+- Replication Controller
+    - helps run multiple copies of a pod or automatically bring up a new pod if one fails
+    - older technology that is being replaced by Replica Set
+- ReplicaSet:
+    - drives cluster to desired state through creation of Pods
 
+# Imperative vs Declarative
+- Imperative
+    - specify what to do
+    - kubectl run, create, expose, edit, scale, set, create, replace, delete
+        - all of these are imperative commands. You are telling the system what changes to make one at a time.
+        - these are helpful in the certification exam or for small one-time changes used when testing some change before it goes into your yaml or configuration files.
+        - update the definition that kubernetes has for components in it's internal yaml files, but doesn't update YOUR yaml files.
+- Declarative
+    - just ask for the destination
+    - kubectl apply is used declaratively
+    - everything is handled in your yaml files, and apply looks at the existing configuration and figures out what needs to be changed.
 
 # neato notes
 - you can use the '-l' flag to kubectl get by label
     - ex: `$kubectl get services -l app=my-app`
 
 # Common Commands (C'mon) from the Kubernetes Tuts
-- make one node with an image
+- make one pod with an image
     - `$kubectl run <podname> --image=nginx`
         - consider using something like `--dry-run=client -o yaml` on the end to get an example yaml file if you ever need one.
 - put podname in a variable:
@@ -123,8 +137,25 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - `$curl $(minikube ip):$NODE_PORT`
 - check status of rollout
     - `$kubectl rollout status deployments/\<deployment-name\>`
+- get a yaml file for something that already exists
+    - `$kubectl get pod <pod-name> -o yaml > <filename>.yaml`
+- what apiVersion or whatever is needed for <thing> (replicaset, ingress, whatever)
+    - `$kubectl explain <thing>`
+- yaml is hard, I want to make a deployment in CLI without needing one
+    - `$kubectl create deployment nginx --image=nginx --replicas=4 --dry-run=client -o yaml > nginx-deployment.yaml`
+- scale a deployment? sure.
+    - `$kubectl scale deployment nginx --replicas=3`
+- create a service named redis-service of type clusterip to expose pod redis on port 6379
+    - `$kubectl expose pod redis --port=6379 --name redis-service --dry-run=client -o yaml #this automatically uses the pod's labels as selectors`
+    - `$kubectl create service clusterip redis --tcp=6379:6379 --dry-run=client -o yaml #this assumes selectors as app=redis. you cannot pass in selectors as an option`
+- create a service named nginx of type nodeport to expose pod nginx's port 80 on port 30080 on the nodes
+    - `$kubectl expose pod nginx --type=NodePort --port=80 --name=nginx-service --dry-run=client -o yaml #this will automatically use the pod's labels as selectors, but you cannot specify the node port.`
+    - `$kubectl create service nodeport nginx --tcp=80:80 --node-port=30080 --dry-run=client -o yaml #this will not use the pods labels as selectors.`
+    - both of the above commands have their own challenges. kubectl expose is recommended, because it is easier to add a node port to the generated definition file.
 
 # Appendix:
 - https://gitlab.com/nanuchi/youtube-tutorial-series/-/tree/master/
 - https://www.youtube.com/watch?v=X48VuDVv0do
 - https://kubernetes.io/docs/tutorials/
+- https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
+- https://kubernetes.io/docs/reference/kubectl/conventions/
