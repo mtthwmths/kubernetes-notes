@@ -40,6 +40,13 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - allows worker nodes to communicate with each other across the cluster
 - Service: 
     - how to abstract away apps using multiple Pods.
+    - let's talk about ports
+        - targetPort is the port that is running on your app's container.
+            - ex: nginx container running in a pod exposed on the pods port 80. you want to expose that port in a service, you'll need to set targetPort to 80.
+        - port is what your service is exposing to the node
+            - ex: an app in your same node wants to access a service 'nginx-service' where the port is set to 80. This app would be looking for nginx-service:80.
+        - NodePort is the port that your node has exposed for outsiders wanting the service. 
+            - ex: 'nginx-service' has nodePort set to 31245, and the node is running on a machine with ip of 10.10.0.20. outsider can get to nginx-service by going to 10.10.0.20:31245 :)
     - defines a logical set of pods and a policy by which to access them
     - defined using YAML (or JSON)
     - a set of Pods targeted by a Service is usually determined by a LabelSelector
