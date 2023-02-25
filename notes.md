@@ -8,6 +8,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - schedules application instances from Deployments
     -contains
         * kube-scheduler
+            - runs as a pod in the kube-system namespace typically
         * controller-manager
             - node-controller
             - replication-controller
@@ -22,6 +23,10 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
         * image version, port specs, etc.
     - ephemeral and destroyed frequently
     - random ip from Node internal range
+    - pods are placed on a Node by the scheduler
+- Binding:
+    - these can be used to assign a nodeName to a pod if there is no scheduler
+    - apiVersion:v1, kind:Binding, metadata:{name:''},target:{apiVersion:v1, kind:Node, name:''}
 - Node:
     - a VM or a physical computer that serves as a worker machine
     - each Node has a Kubelet and a container runtime (docker, containerd, rkt)
@@ -119,6 +124,13 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - kubectl apply is used declaratively
     - everything is handled in your yaml files, and apply looks at the existing configuration and figures out what needs to be changed.
 
+# Labels and Selectors
+- I'm going to use the replicationSet/replicaset-definition.yml file as an example
+- the metadata:{labels:{app:myapp, type:front-end}} labels (lines 3-7) are used to label the replica set.
+- the spec:{template:{metadata:{labels:{app:myapp, type:front-end}}}} labels (lines 12-14) are the labels in our pods
+- the spec:{selector:{matchLabels:{type:front-end}}} label (line 22) is how the replicaset knows which pods to monitor.
+- ex: if you already had a pod with the label type:front-end in it, the replicaset would only need 2 new pods to meet the replicas:3 requirement in our yaml file.
+- note: annotations are used at the same level under metadata in your yaml, but they contain notes such as version numbers, contact emails, etc. and are only informational
 # neato notes
 - you can use the '-l' flag to kubectl get by label
     - ex: `$kubectl get services -l app=my-app`
@@ -127,6 +139,8 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - make one pod with an image
     - `$kubectl run <podname> --image=nginx`
         - consider using something like `--dry-run=client -o yaml` on the end to get an example yaml file if you ever need one.
+- you made a pod and oopsy, you need to change something imperatively
+    - `$kubectl replace --force -f nginx.yaml #the force flag will delete the existing pod and create one with the config of the yaml`
 - put podname in a variable:
     - `$export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')`
 - API of the pod (assumes $POD_NAME variable is set):
