@@ -211,6 +211,23 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - you can view which scheduler scheduled a pod by using `$kubectl get events -o wide`
     - also `$kubectl logs my-custom-scheduler --name-space=kube-system`
 
+# monitoring and logging
+- kubernetes does not come with a full-featured built-in monitoring solution
+- 3rd party options
+    - metrics server (vs heapster(deprecated))
+        - you can have 1 metrics server per cluster
+        - slimmed down when compared to heapster
+        - in-memory monitoring solution (not stored on disk. no history)
+        - the kubelet contains cadvisor(container advisor)
+        - metrics-server is an addon in minikube
+        - kubectl top node/pod
+    - prometheus
+    - elastic stack
+    - datadog
+    - dynatrace
+- kubectl logs command shows logs from container on a pod
+    - if there are multiple containers on a pod, you'll need to specify by container name
+
 # neato notes
 - you can use the '-l' flag to kubectl get by label
     - ex: `$kubectl get services -l app=my-app`
