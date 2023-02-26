@@ -16,6 +16,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
             - who did what when and why
         kube-apiserver
 - Pod:
+    - remember the kubectl replace --force command will delete an older pod and create the one you are specifying in your new yaml file.
     - kubernetes abstraction that represents a group of one or more application containers
     - also represents shared resources
         * shared storage, such as Volumes
@@ -111,6 +112,14 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - older technology that is being replaced by Replica Set
 - ReplicaSet:
     - drives cluster to desired state through creation of Pods
+- Daemon set:
+    - puts one instance of your pod on each node.
+    - used for monitoring or logging to be sure that each node has the same ability.
+    - kube-proxy
+    - weave-net
+    - very similar yaml setup to a ReplicaSet, with the spec.template section containing your pod definition
+    - kubectl get daemonsets is your friend.
+    - from v1.12 on for kube, daemon sets use node affinity and default scheduler to get pods on nodes.
 
 # Imperative vs Declarative
 - Imperative
@@ -131,9 +140,89 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - the spec:{selector:{matchLabels:{type:front-end}}} label (line 22) is how the replicaset knows which pods to monitor.
 - ex: if you already had a pod with the label type:front-end in it, the replicaset would only need 2 new pods to meet the replicas:3 requirement in our yaml file.
 - note: annotations are used at the same level under metadata in your yaml, but they contain notes such as version numbers, contact emails, etc. and are only informational
+
+# taints and tolerations
+- the example given in the udemy course made it clear for me.
+    - bugs want to land on people. 
+    - The person sprays a repellant (taint). 
+    - some bugs have no tolerance for the taint and can't land. 
+    - other bugs will be tolerant of the taint and can land.
+    - the bugs are pods looking for a node. 
+    - the person is a node that is filtering which pods can be placed on it.
+
+# node affinity
+- https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+- you can label a node with kubectl label
+- you can edit a deployment with kubectl edit, and the affinity goes on the pod spec not the deployment spec.
+- you can generate a template yaml with kubectl create deployment blablabla
+
+# resource requirements
+- 0.5 cpu and 256Mi memory is the assumed minimum resource for a pod
+    - you can specify as low as 0.1 cpu (100m). using the 'm' notation, you can go as low as 1m
+    - 1 cpu is 1 aws vCPU, GCP Core, Azure Core
+- specifying memory. using the G moves in groups of 1000, but using Gi uses groups of 1024
+- 1 cpu and 512Mi is the assumem limit of resources for a pod
+- when a pod exceeds limits, the cpu gets throttled to avoid exceeding the limit.
+    - if a pod tries to consume memory than is limited constantly, it is terminated.
+- for a Pod to get these defaults, you must set the default values by creating a LimitRange in the same namespace
+    - https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/
+    - https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/
+
+## quick note on editing pods and deployments
+- you cannot edit the specifications of an existing pod other than
+    1. spec.containers[*].image
+    1. spec.initContainers[*].image
+    1. spec.activeDeadlineSeconds
+    1. spec.tolerations
+- to edit a pod, you can either use the kubectl edit command and then delete->redeploy from the temporary yaml file or you can use kubectl get to output the yaml and then use that when you delete->redeploy
+- with deployments, you can edit any property of the pods, because the deployment will handle deleting any pods that are out of the updated spec and redeploy them for you.
+
+# static pods
+- you can configure the kubelet to read the pod definition files from a directory on the server designated to store information about pods (manifests)
+- the kubelet periodically checks this directory, and can create the pods from the definitions it finds there.
+- if you remove a definition from this directory, it is deleted automatically.
+- the pods created this way are called static Pods
+- the directory is an option called --pod-manifest-path and is set on kubelet.service
+    - you could also use the --config option to specify a separate yaml file that contains a staticPodPath: <directory> line
+    - typically found in /var/lib/kubelet/config.yaml
+- you can use docker ps to view the static pods created this way.
+- the API server uses an ACDP API endpoint to provide input to kubelet
+- if the node is part of a cluster, the static pods seen in kubectl get pods are a read-only copy. 
+    - you would need to edit the static pod definition as described above to edit it.
+- static pods and daemonsets are ignored by the kube-scheduler.
+- differences between the two
+    - creation
+        - static pods are created by the kubelet
+        - daemonsets are created by kube-api server (DaemonSet controller)
+    - common usage
+        - kubelet deploy control plane components as static pods
+        - daemonsets deploy monitoring/logging agents on nodes
+- ownerreference section will have the kind as Node. That's usually a static pod.
+    - replicaset, daemonset, bla will be not a static node.
+- an easier way to identify is in the name of the pod, typically static pods will have the node name appended to the end of it.
+
+# multiple schedulers
+- kubernetes cluster can have multiple schedulers
+- you can specify schedulers in pod definition
+- this looks *REALLY HARD* on first watch... :(
+    - read along with https://kubernetes.io/docs/tasks/extend-kubernetes/configure-multiple-schedulers/
+    - this should be more verbose and hopefully clear it up
+    - also consider doing the lab and just researching as you go.
+- you can view which scheduler scheduled a pod by using `$kubectl get events -o wide`
+    - also `$kubectl logs my-custom-scheduler --name-space=kube-system`
+
 # neato notes
 - you can use the '-l' flag to kubectl get by label
     - ex: `$kubectl get services -l app=my-app`
+- need to find a static pod on some node somewhere. got you
+    - you'll need to know what node the pod is on
+        - `$kubectl get pods -A -o wide`
+    - now ssh to the internal IP of that node (assuming you're on controlplane)
+    - staticPodPath should be in /var/lib/kubelet blabla
+    - go to the directory for staticPodPath and then delete the file that is generating the pod.
+    - after a bit the kubelet will see that file is gone and delete the file.
+        - you can restart kubelet if you're feeling froggy.
+            - `$systemctl restart kubelet`
 
 # Common Commands (C'mon) from the Kubernetes Tuts
 - make one pod with an image
@@ -180,3 +269,4 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - https://kubernetes.io/docs/tutorials/
 - https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
 - https://kubernetes.io/docs/reference/kubectl/conventions/
+- https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource
