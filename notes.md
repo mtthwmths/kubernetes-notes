@@ -121,7 +121,9 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - kubectl get daemonsets is your friend.
     - from v1.12 on for kube, daemon sets use node affinity and default scheduler to get pods on nodes.
 
-# Imperative vs Declarative
+# Udemy Class Notes
+
+## Imperative vs Declarative
 - Imperative
     - specify what to do
     - kubectl run, create, expose, edit, scale, set, create, replace, delete
@@ -133,7 +135,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - kubectl apply is used declaratively
     - everything is handled in your yaml files, and apply looks at the existing configuration and figures out what needs to be changed.
 
-# Labels and Selectors
+## Labels and Selectors
 - I'm going to use the replicationSet/replicaset-definition.yml file as an example
 - the metadata:{labels:{app:myapp, type:front-end}} labels (lines 3-7) are used to label the replica set.
 - the spec:{template:{metadata:{labels:{app:myapp, type:front-end}}}} labels (lines 12-14) are the labels in our pods
@@ -141,7 +143,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - ex: if you already had a pod with the label type:front-end in it, the replicaset would only need 2 new pods to meet the replicas:3 requirement in our yaml file.
 - note: annotations are used at the same level under metadata in your yaml, but they contain notes such as version numbers, contact emails, etc. and are only informational
 
-# taints and tolerations
+## taints and tolerations
 - the example given in the udemy course made it clear for me.
     - bugs want to land on people. 
     - The person sprays a repellant (taint). 
@@ -150,13 +152,13 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - the bugs are pods looking for a node. 
     - the person is a node that is filtering which pods can be placed on it.
 
-# node affinity
+## node affinity
 - https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
 - you can label a node with kubectl label
 - you can edit a deployment with kubectl edit, and the affinity goes on the pod spec not the deployment spec.
 - you can generate a template yaml with kubectl create deployment blablabla
 
-# resource requirements
+## resource requirements
 - 0.5 cpu and 256Mi memory is the assumed minimum resource for a pod
     - you can specify as low as 0.1 cpu (100m). using the 'm' notation, you can go as low as 1m
     - 1 cpu is 1 aws vCPU, GCP Core, Azure Core
@@ -168,7 +170,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/
     - https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/
 
-## quick note on editing pods and deployments
+### quick note on editing pods and deployments
 - you cannot edit the specifications of an existing pod other than
     1. spec.containers[*].image
     1. spec.initContainers[*].image
@@ -177,7 +179,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - to edit a pod, you can either use the kubectl edit command and then delete->redeploy from the temporary yaml file or you can use kubectl get to output the yaml and then use that when you delete->redeploy
 - with deployments, you can edit any property of the pods, because the deployment will handle deleting any pods that are out of the updated spec and redeploy them for you.
 
-# static pods
+## static pods
 - you can configure the kubelet to read the pod definition files from a directory on the server designated to store information about pods (manifests)
 - the kubelet periodically checks this directory, and can create the pods from the definitions it finds there.
 - if you remove a definition from this directory, it is deleted automatically.
@@ -201,7 +203,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - replicaset, daemonset, bla will be not a static node.
 - an easier way to identify is in the name of the pod, typically static pods will have the node name appended to the end of it.
 
-# multiple schedulers
+## multiple schedulers
 - kubernetes cluster can have multiple schedulers
 - you can specify schedulers in pod definition
 - this looks *REALLY HARD* on first watch... :(
@@ -211,7 +213,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - you can view which scheduler scheduled a pod by using `$kubectl get events -o wide`
     - also `$kubectl logs my-custom-scheduler --name-space=kube-system`
 
-# monitoring and logging
+## monitoring and logging
 - kubernetes does not come with a full-featured built-in monitoring solution
 - 3rd party options
     - metrics server (vs heapster(deprecated))
@@ -227,6 +229,109 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - dynatrace
 - kubectl logs command shows logs from container on a pod
     - if there are multiple containers on a pod, you'll need to specify by container name
+    - use it like `$kubectl get logs -f podname` to stream the logs as they update.
+
+## Application lifecycle management
+
+### rollouts and rollbacks
+- kubectl has a rollout command
+- 2 types of deployment strategies
+    - Recreate: bring down all of the instances; outage; updated version
+    - rolling update: the assumed strategy (Default) bring down an instance; updated instance replaces the one that was brought down; repeat for all instances
+- commands:
+    - imperative: kubectl set image
+    - declaritive: kubectl apply
+- under the hood, deployments create a separate replicaset to perform the rolling update.
+- if strategy:type: rollingupdate then set rollingupdatestrategy: X% max unavailable, X% max surge
+    - this tells you how many can be down at a time during an upgrade or rollback.
+
+### configure applications
+
+#### commands and arguments
+- refresh on commands, arguments, entrypoints in docker
+- `$docker run ubuntu` runs and exits immediately
+- `$docker ps` will show nothing
+- containers are not meant to hold an operating system, and once the service within is done or stops, the container is destroyed
+- the docker file uses bash as the default command of the ubuntu image, this means it launched the bash program but no terminal was found and it exited. Since the command finished, the container was destroyed.
+- `$docker run ubuntu sleep 5` this will keep it around for 5 seconds because you have specified a new command other than bash.
+- this can be put in the dockerfile
+    - use the ENTRYPOINT ["sleep"] to tell the dockerfile what to run as the image is started.
+    - now you can run `$docker run ubuntu 10` and it will sleep for 10
+    - put the CMD ["5"] after the ENTRYPOINT line to have it sleep for 5 seconds if no number is provided.
+    - you can also change the entrypoint with `$docker run --entrypoint` flag
+- creating a pod with this modified image can be put in the spec:containers:args section of your yaml file
+    - to override the entrypoint, you can use spec:containers:command in your yaml file
+- you cannot change the args of a pod using `$kubectl edit`
+
+#### configuring environment variables
+- huge shoutout to the nana youtube video. This is something I've seen already and that's solely thanks to that video.
+- instead of key: and value: in your env: section, you'll be using key: and valueFrom:
+##### configmaps
+- configmaps are used to pass environment values in as key:value pairs
+- there are two phases in using these. creating the configmap and injecting them into the pod.
+- kubectl has a `create configmap` command.
+    - make a config map to set APP_COLOR to darkblue
+        - `$kubectl create cm <cm-name> --from-literal="APP_COLOR=darkblue"`
+    - configMap files have the usual apiVersion, kind, and metadata, but they also have the new data: section
+        - the data section will have things like `app_color: blue` or `max_allowed_packets: 100`
+- to inject into the pod, you can use the envFrom: section under your pod's spec: section
+    - configMapRef:{name: app-config}
+- the lab used the envFrom to get all the key:value pairs from a configMap into your pod
+    - see https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#configure-all-key-value-pairs-in-a-configmap-as-container-environment-variables
+##### secrets 
+- secrets are used to store sensitive information
+- 2 steps just like configmaps: create it, inject it
+- same yaml structure as configmap, but secret key:value pairs will have the value encoded
+    - you can convert data from plain to encoded with:
+        - `$echo -n 'mathis' | base64`
+- if used as volumes, each secret will be a file in the volume that contains the value
+- secrets are not encrypted, only encoded
+    - do not check-in secret objects to SCM
+- secrets are not encrypted in ETCD
+    - consider enabling encrypting secretdata at rest.
+- anyone able to create pods/deployments in the same namespace can access the secrets.
+    - consider enabling role-based access control
+- also consider using third-party secrets store providers in AWS, Azure, GCP, etc
+- there are better ways of handling sensitive date like passwords such as using tools like Helm Secrets, HashiCorp Vault, etc.
+- definitely skim the k8s.io/docs on secrets here: https://kubernetes.io/docs/concepts/configuration/secret/#risks
+- configmaps have configMapRef, bet you can't guess what secrets have... (secretRef)
+- demo on encrypting secret data at rest
+    - to install etcdctl `$apt install etcd-client`
+    - you'll need ca.crt, server.crt, server.key to get the secret from etcd
+    - to get the secret from etcd: `$ETCDCTL_API=3 etcdctl --cacert=<path-to-ca.crt> --cert=<path-to-server.crt> --key=<path-to-server.key> get /registry/secrets/<namespace>/<secret-name> | hexdump -C`
+    - this shows the secret in etcd in plain-text
+    - also, you can use kubectl and run: `$kubectl get secret <secret-name> -o yaml` to view it in plain text there.
+    - the point of encrypting secret data at rest is to avoid these vulnerabilities. :)
+    - using a kubeadm setup, you can search for kube-apiserver.yaml in /etc/kubernetes/manifests to see if the --encryption-provider-config is set.
+        - or you can do a `$ps -aux | grep kube-api | grep "encryption-provider-config"` to look for it.
+        - this would show if encryption provider is setup
+    - to set this up, the EncryptionConfiguration yaml file has a resources: section where you can specify what gets encrypted.
+        - this can be secrets or whatever you need to encrypt.
+        - also in that file, if the first thing in the list of resources:{providers:{}} is `identity{}` then you are not encrypting.
+        - the secret needed in setting up your encryption provider can be generated using 
+            - `$head -c 32 /dev/urandom | base64`
+    - read along here if needed: https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/
+
+#### multi-container pods
+- to create a multi-container pod, simply add a new container in the spec:containers: section of your pod's yaml.
+- multi-container pods fall under three patterns
+    1. sidecar
+    1. adapter
+    1. ambassador
+- this is more of a CKAD topic and not discussed in length in my CKA udemy course.
+##### initContainers
+- runs a process to completion in a container without the surrounding pod closing
+- example: a process that pulls code from a repository, or that waits for an external service to be up before starting the actual application
+- specified inside an initContainers section within the pod's spec section
+
+#### self healing applications
+- Liveness and Readiness Probes are not required for the CKA exam and will instead be covered in the CKAD course.
+
+## Cluster Maintenance
+
+### Operating System Upgrade
+- I am falling asleep at the keyboard. send good vibes lol
+- 
 
 # neato notes
 - you can use the '-l' flag to kubectl get by label
@@ -279,6 +384,11 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - `$kubectl expose pod nginx --type=NodePort --port=80 --name=nginx-service --dry-run=client -o yaml #this will automatically use the pod's labels as selectors, but you cannot specify the node port.`
     - `$kubectl create service nodeport nginx --tcp=80:80 --node-port=30080 --dry-run=client -o yaml #this will not use the pods labels as selectors.`
     - both of the above commands have their own challenges. kubectl expose is recommended, because it is easier to add a node port to the generated definition file.
+- make a config map to set APP_COLOR to darkblue
+    - `$kubectl create cm <cm-name> --from-literal="APP_COLOR=darkblue"`
+- you can convert data from plain to encoded with:
+    - `$echo -n 'mathis' | base64`
+    - `$echo -n 'base64stuff==' | base64 --decode` will put it back to normal
 
 # Appendix:
 - https://gitlab.com/nanuchi/youtube-tutorial-series/-/tree/master/
