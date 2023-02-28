@@ -349,22 +349,20 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - typically if you deployed with kubeadm, you can use the tool to plan or apply an upgrade
 - commands in these sections are on the master node unless stated otherwise.
 
-##### uprgade the Master Node
+#### uprgade the Master Node
+- `$apt upgrade -y kubeadm=1.12.0-00`
+- `$kubeadm upgrade plan`
+- `$kubeadm upgrade apply v1.12.0`
+- `$apt-get upgrade -y kubelet=1.12.0-00`
+- `$systemctl restart kubelet`
 
-    - `$apt upgrade -y kubeadm=1.12.0-00`
-    - `$kubeadm upgrade plan`
-    - `$kubeadm upgrade apply v1.12.0`
-    - `$apt-get upgrade -y kubelet=1.12.0-00`
-    - `$systemctl restart kubelet`
-
-##### upgrade a worker node
-
-    - `$kubectl drain node-1`
-    - `$apt-get upgrade -y kubeadm=1.12.0-00 #on the node-1 that was drained`
-    - `$apt-get upgrade -y kubelet=1.12.0-00 #on the node-1 that was drained`
-    - `$kubeadm upgrade node config --kubelet-version v1.12.0 #on the node-1 that was drained`
-    - `$systemctl restart kubelet #on the node-1 that was drained`
-    - `$kubectl uncordon node-1`
+#### upgrade a worker node
+- `$kubectl drain node-1`
+- `$apt-get upgrade -y kubeadm=1.12.0-00 #on the node-1 that was drained`
+- `$apt-get upgrade -y kubelet=1.12.0-00 #on the node-1 that was drained`
+- `$kubeadm upgrade node config --kubelet-version v1.12.0 #on the node-1 that was drained`
+- `$systemctl restart kubelet #on the node-1 that was drained`
+- `$kubectl uncordon node-1`
 
 #### Backup
 - etcd --data-dir is where all of the data lives
