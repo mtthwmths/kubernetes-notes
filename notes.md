@@ -331,8 +331,62 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 
 ### Operating System Upgrade
 - I am falling asleep at the keyboard. send good vibes lol
-- 
+- the pod-eviction-timeout is set on the controller-manager and typically waits 5 minutes before considering a pod dead
+- you can drain a node with `$kubectl drain <node-name>`
+- this allows the node to be restarted.
+- you would need to uncordon the node to mark it as schedulable again
+- cordon can be used to mark a node as unschedulable.
 
+#### cluster upgrades
+- components can be at different versions
+- the kube-apiserver should be at the highest level.
+- controller-manager and kube-scheduler should be 1 lower than that.
+- kubelet and kube-proxy can be 2 lower than that.
+    - ex:
+        1. api 1.10
+        1. scheduler 1.9 or 1.10
+        1. proxy 1.8, 1.9, or 1.10
+- typically if you deployed with kubeadm, you can use the tool to plan or apply an upgrade
+- commands in these sections are on the master node unless stated otherwise.
+
+##### uprgade the Master Node
+
+    - `$apt upgrade -y kubeadm=1.12.0-00`
+    - `$kubeadm upgrade plan`
+    - `$kubeadm upgrade apply v1.12.0`
+    - `$apt-get upgrade -y kubelet=1.12.0-00`
+    - `$systemctl restart kubelet`
+
+##### upgrade a worker node
+
+    - `$kubectl drain node-1`
+    - `$apt-get upgrade -y kubeadm=1.12.0-00 #on the node-1 that was drained`
+    - `$apt-get upgrade -y kubelet=1.12.0-00 #on the node-1 that was drained`
+    - `$kubeadm upgrade node config --kubelet-version v1.12.0 #on the node-1 that was drained`
+    - `$systemctl restart kubelet #on the node-1 that was drained`
+    - `$kubectl uncordon node-1`
+
+#### Backup
+- etcd --data-dir is where all of the data lives
+- `$ETCDCTL_API=3 etcdtcl snapshot save snapshot.db` 
+    - you can always use `$export ETCDCTL_API=3` to avoid needing to type it in the command
+- to restore
+    - service kube-apiserver stop
+    - `$etcdctl snapshot restore <filename> --data-dir <new path>`
+        - the path of the data-dir is set to somewhere other than the old value
+    - the restore creates a new etcd
+    - set the data-dir in the etcd.service file to reflect the restore location <new path> from the earlier command
+    - then systemctl daemon-reload
+    - service etcd restart
+    - service kube-apiserver start
+- with all of the etcd commands, you'll need certificates and keys specified.
+    - with a TLS-enabled ETCD database, the following are mandatory
+        1. --cacert #verify certs of TLS-enabled servers using this CA bundle
+        1. --cert #identify secure client using this TLS Cert file
+        1. --endpoints=[127.0.0.1:2379] # this is the default as ETCD is running on master node and exposed on localhost2379
+        1. --key #identify secure client using this TLS key file
+    - ex: `$etcdctl --cacert="/etc/kubernetes/pki/etcd/ca.crt" --cert="/etc/kubernetes/pki/etcd/server.crt" --endpoints=https://[127.0.0.1]:2379 --key="/etc/kubernetes/pki/etcd/server.key" snapshot save /opt/snapshot-pre-boot.db`
+ 
 # neato notes
 - you can use the '-l' flag to kubectl get by label
     - ex: `$kubectl get services -l app=my-app`
