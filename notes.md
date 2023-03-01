@@ -384,7 +384,62 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
         1. --endpoints=[127.0.0.1:2379] # this is the default as ETCD is running on master node and exposed on localhost2379
         1. --key #identify secure client using this TLS key file
     - ex: `$etcdctl --cacert="/etc/kubernetes/pki/etcd/ca.crt" --cert="/etc/kubernetes/pki/etcd/server.crt" --endpoints=https://[127.0.0.1]:2379 --key="/etc/kubernetes/pki/etcd/server.key" snapshot save /opt/snapshot-pre-boot.db`
- 
+- a "Stacked etcd topology" means the etcd nodes are colocated with controlplane nodes
+    - if a control plane node (apiserver, controller-manager, scheduler) has an etcd pod on it as well, that is "Stacked"
+- an etcd runs on separate hosts, and communicates through the apiserver of control plane nodes.
+    - this decoupling of the control plane node and etcd node allows for more redundancy and resiliency, but costs twice the nomber of hosts when compared with the stacked strategy.
+- that lab 2 though... hoo boy...
+    - stacked topology vs external: know it
+    - etcdctl: know how to use it.
+    - if you're ssh-ing to a separate etcd server, you'll be using etcdctl.
+        - don't bother looking for kubectl, all you want to know about is etcd. no kube required.
+    - kubectl config: learn it, then... know it.
+        - this is how you swap from context to context while on the "student-node" in the lab.
+        - context is something you set up with kubernetes. some yaml somewhere. and it allows you to call resources in other nodes.
+        - k config use-context is the star of this lab lolol
+        - backup of etcd happens on control-plane nodes. You are on student-node or whatever.
+            - this means that to backup the etcd, you need to ssh to the ip address of the controlplane node...
+            - `$k describe -n kube-system po etcd-whatever #get the certs and keys for etcd, you'll need them for etcdctl`
+            - `$k get no -o wide #get the ip`
+            - `$ssh <the-ip>`
+            - `$export ETCDCTL_API=3 && etcdctl <certs and keys> snapshot save <directory for backup>`
+            - `$scp <the-ip>:<directory for backup> <local directory(/opt)>`
+- whew, that was a LOT. definitely do some studying in this one before doing the CKA exam...
+
+## Security
+- oh man, this is a weakness of mine. Right up there with networking...
+    - this section is scary.
+### Security Primitives
+- hosts must secure access and have password auth disabled, ssh-key based auth
+- kube-apiserver is at the root of all access to the cluster. 
+    - the first line of defense
+- whe can access the apiserver
+    - defined by the auth mechanisms
+    - username/pass, username/token, certs, LDAP, service accounts
+- what can they do with the access
+    - RBAC auth (role based access control)
+    - ABAC
+    - Node auth
+    - webhook
+- the rest of the control plane is secured with TLS. more on that in a bit.
+- all pods can access all other pods in the cluster
+    - this can be restricted with network policies
+### Authentication
+- admins, developers, end users, 3rd party apps/bots
+- secure between the internal components and these with authentication
+- security of end users will be handled by the applications that or on the nodes so let's focus on the rest.
+- let's segregate these into humans and non-humans (or users and service accounts)
+- kubectl can manage service accounts with `$kubectl create serviceaccount`
+- all user access is handled through apiserver, whether user is using kubectl or curling the apiserver directly
+- static password and token files
+    - this can be stored in a csv file with 3 columns (pass, user, id)
+    - this will go in the kube-apiserver.service (or the kube-apiserver.yaml in /etc/kubernetes/manifests/ if using kubeadm)
+    - this can be passed using curl in a direct request with the -u flag (value will be user:pass)
+    - this is not recommended. consider volume mount while providing the auth file in a kubeadm setup
+    - this basic setup is deprecated in 1.19 and removed n later releases
+    - there will also need to be a rolebinding setup for these users (from the file)
+    - serviceAccounts are covered in CKAD and not CKA. It is not part of the CKA curriculum.
+
 # neato notes
 - you can use the '-l' flag to kubectl get by label
     - ex: `$kubectl get services -l app=my-app`
@@ -449,3 +504,4 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
 - https://kubernetes.io/docs/reference/kubectl/conventions/
 - https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource
+- https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster
