@@ -25,6 +25,10 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - ephemeral and destroyed frequently
     - random ip from Node internal range
     - pods are placed on a Node by the scheduler
+- Jobs:
+    - a job creates one or more Pods and will continue to retry execution of the Pods until a specified number of them successfully terminate
+    - Suspending a job will delete the active pods until it is resumed
+    - deleting a Job will clean up any pods it created
 - Binding:
     - these can be used to assign a nodeName to a pod if there is no scheduler
     - apiVersion:v1, kind:Binding, metadata:{name:''},target:{apiVersion:v1, kind:Node, name:''}
@@ -67,6 +71,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
             - this is the default type
         * Headless Services
             - ex: stateful apps like databases
+            - you can reach the pod without need of a proxy
         * NodePort Services
             - external traffic has access to fixed port on each Worker Node
             - not secure by nature
@@ -77,7 +82,7 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
             - NodePort and ClusterIP services are created automatically by Kubernetes
             - extends the NodePort Service        
         * ExternalName
-            - maps the service to the contents of the 'externalName' field by returning a CNAE record with its value
+            - maps the service to the contents of the 'externalName' field by returning a CNAME record with its value
             - no proxying of any kind is set up.
             - requires v1.7 or higher of kube-dns
             - typically used without a selector to allow for manually mapping endpoints
@@ -88,7 +93,12 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
 - Ingress:
     - handles external requests by passing to services
 - PersistentVolumeClaim
+    - storage requested by kubernetes for pods
+    - should be in the same namespace as the pod
 - PersistentVolume
+    - mapping from persistenvolume and pvclaim is always one to one
+    - even when claim is deleted, the PV remains and will not be reused by any claims
+    - mounted to a storage class
 - StatefulSet: 
     - pods get serial names (ex: <app>-0, <app>-1)
     - pods get (individual dns name) endpoints
@@ -107,11 +117,13 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
         * Bindings 
         * Others
     - etcd.service configuration must be set for High Availability clustes where there will be more than one
+    - can be on the controlPlane (stacked) or external (external (lol(hilarious)))
 - Replication Controller
     - helps run multiple copies of a pod or automatically bring up a new pod if one fails
     - older technology that is being replaced by Replica Set
 - ReplicaSet:
     - drives cluster to desired state through creation of Pods
+    - can use selectors, and is very smug about it when around RepController because they can't do that.
 - Daemon set:
     - puts one instance of your pod on each node.
     - used for monitoring or logging to be sure that each node has the same ability.
@@ -120,6 +132,34 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - very similar yaml setup to a ReplicaSet, with the spec.template section containing your pod definition
     - kubectl get daemonsets is your friend.
     - from v1.12 on for kube, daemon sets use node affinity and default scheduler to get pods on nodes.
+
+# Youtube Interview Questions Notes
+- Tell us about components of k8s
+    - kubectl: talks through kube apiServer to your cluster
+    - apiServer
+        - first point of contact for rest commands
+        - manages you cluster
+    - ControllerManager
+        - responsible for regulating the cluster
+    - Scheduler 
+        - schedules tasks for your worker nodes
+    - ETCD
+        - key value storage of cluster state and spec
+    - kubelet
+        - controls the worker node
+    - container runtime
+        - on each worker node
+        - makes containers
+    - kube proxy
+        - directs traffic on worker nodes
+        - load balances
+    - pod
+        - the most basic unit of k8s
+        - can have 1 or more component
+- Secrets are Encoded and not Encrypted
+- Sematext Docker agent is a log collection agent (outdated info: kubectl log gets logs from stout and logrotater keeps them fresh)
+- How can I keep a 20s Job from taking 5 minutes
+    - you can use --activeDeadlineSeconds flag in your container spec to limit job run time.
 
 # Udemy Class Notes
 
@@ -439,6 +479,12 @@ https://trello.com/b/kyi6vb5V/learn-kubernetes
     - this basic setup is deprecated in 1.19 and removed n later releases
     - there will also need to be a rolebinding setup for these users (from the file)
     - serviceAccounts are covered in CKAD and not CKA. It is not part of the CKA curriculum.
+### Notes On TLS
+- asymmetric encryption (public and private key)
+- certificate authority/ root certificates
+- server certificates
+- client certificates
+- private keys have the word 'key' in the name typically. (with certificates or public keys having crt or pem)
 
 # neato notes
 - you can use the '-l' flag to kubectl get by label
